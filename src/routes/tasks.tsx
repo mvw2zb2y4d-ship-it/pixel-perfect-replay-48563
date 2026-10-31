@@ -23,11 +23,11 @@ export const Route = createFileRoute("/tasks")({
 type Filter = "active" | "overdue" | "done" | "all";
 
 /** Each task appears once: its nearest relevant occurrence. */
-function occurrence(t: Task, today: string): string {
+function occurrence(t: Task): string {
   if (t.repeat === "none") return t.date;
   // most recent missed occurrence within 30 days, else next upcoming
   for (let i = 30; i >= 1; i--) { const s = ymd(addDays(new Date(), -i)); if (occursOn(t, s) && !isDone(t, s)) return s; }
-  for (let i = 0; i < 400; i++) { const s = ymd(addDays(new Date(), i)); if (occursOn(t, s) && (s !== today || true)) return s; }
+  for (let i = 0; i < 400; i++) { const s = ymd(addDays(new Date(), i)); if (occursOn(t, s)) return s; }
   return t.date;
 }
 
@@ -36,7 +36,7 @@ function TasksPage() {
   const [filter, setFilter] = useState<Filter>("active");
   const [sheet, setSheet] = useState<{ open: boolean; task?: Task | null }>({ open: false });
   const today = todayStr();
-  const rows = tasks.map((t) => ({ t, date: occurrence(t, today) }))
+  const rows = tasks.map((t) => ({ t, date: occurrence(t) }))
     .filter(({ t, date }) => {
       const done = isDone(t, date);
       if (filter === "active") return !done;
