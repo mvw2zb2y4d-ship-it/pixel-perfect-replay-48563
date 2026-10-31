@@ -3,7 +3,7 @@ import { useStore, type Task, type Priority, type Repeat } from "@/lib/store";
 import { PRIORITY_LABEL, REPEAT_LABEL, todayStr } from "@/lib/logic";
 import { CategorySelect, Label, PrimaryButton, Segmented, Sheet } from "./ui-kit";
 
-export function TaskSheet({ open, onClose, task, date }: { open: boolean; onClose: () => void; task?: Task | null; date?: string }) {
+export function TaskSheet({ open, onClose, task, date }: { open: boolean; onClose: () => void; task?: Task | null | undefined; date?: string | undefined }) {
   const saveTask = useStore((s) => s.saveTask);
   const deleteTask = useStore((s) => s.deleteTask);
   const blank = { title: "", description: "", date: date ?? todayStr(), time: "", categoryId: null as string | null, priority: "medium" as Priority, repeat: "none" as Repeat };

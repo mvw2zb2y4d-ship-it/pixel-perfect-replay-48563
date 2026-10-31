@@ -11,7 +11,7 @@ const blank: Draft = {
   reminder: { enabled: false, time: "09:00" }, kind: "check", target: 8, unit: "раз",
 };
 
-export function HabitSheet({ open, onClose, habit }: { open: boolean; onClose: () => void; habit?: Habit | null }) {
+export function HabitSheet({ open, onClose, habit }: { open: boolean; onClose: () => void; habit?: Habit | null | undefined }) {
   const save = useStore((s) => s.saveHabit);
   const del = useStore((s) => s.deleteHabit);
   const [f, setF] = useState<Draft>(blank);

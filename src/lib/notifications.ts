@@ -36,7 +36,7 @@ export function scheduleReminders(habits: Habit[], enabled: boolean) {
   const now = new Date();
   for (const h of habits) {
     if (!h.reminder.enabled || !isScheduled(h, now) || habitDone(h, todayStr())) continue;
-    const [hh, mm] = h.reminder.time.split(":").map(Number);
+    const [hh = 9, mm = 0] = h.reminder.time.split(":").map(Number);
     const at = new Date(now); at.setHours(hh, mm, 0, 0);
     const ms = at.getTime() - now.getTime();
     if (ms > 0) timers.push(window.setTimeout(() => show(`${h.icon} ${h.name}`, "Время для привычки"), ms));

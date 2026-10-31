@@ -23,10 +23,10 @@ interface State {
   addCategory: (c: Omit<Category, "id">) => void;
   updateCategory: (id: string, c: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
-  saveTask: (t: Omit<Task, "id" | "completedDates"> & { id?: string }) => void;
+  saveTask: (t: Omit<Task, "id" | "completedDates"> & { id?: string | undefined }) => void;
   deleteTask: (id: string) => void;
   toggleTask: (id: string, date: string) => void;
-  saveHabit: (h: Omit<Habit, "id" | "log" | "createdAt"> & { id?: string }) => void;
+  saveHabit: (h: Omit<Habit, "id" | "log" | "createdAt"> & { id?: string | undefined }) => void;
   deleteHabit: (id: string) => void;
   setHabitValue: (id: string, date: string, value: number) => void;
   updateSettings: (s: Partial<Settings>) => void;
