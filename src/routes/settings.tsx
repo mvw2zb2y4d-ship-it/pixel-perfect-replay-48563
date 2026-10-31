@@ -34,7 +34,7 @@ const STATUS_TEXT: Record<NotifStatus, string> = {
 function SettingsPage() {
   const s = useStore();
   const [name, setName] = useState("");
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState<string>("#8b7cf6");
   const [status, setStatus] = useState<NotifStatus>("unsupported");
   const [standalone, setStandalone] = useState(false);
   const [edit, setEdit] = useState<{ open: boolean; habit?: Habit | null }>({ open: false });
