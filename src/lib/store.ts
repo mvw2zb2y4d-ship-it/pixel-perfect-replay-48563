@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { WorkSchedule, ShiftType, Gig } from "./work-types";
+export type { WorkSchedule, ShiftType, Gig } from "./work-types";
 
 export type Priority = "low" | "medium" | "high";
 export type Repeat = "none" | "daily" | "weekly" | "monthly";
@@ -19,6 +21,13 @@ export interface Habit {
 export interface Settings { theme: "dark" | "light"; notifications: boolean; weekStartsMonday: boolean }
 
 interface State {
+  schedules: WorkSchedule[]; activeScheduleId: string | null; gigs: Gig[];
+  saveSchedule: (s: WorkSchedule) => void;
+  deleteSchedule: (id: string) => void;
+  activateSchedule: (id: string | null) => void;
+  overrideShift: (id: string, date: string, shift: ShiftType | null | undefined) => void;
+  saveGig: (g: Gig) => void;
+  deleteGig: (id: string) => void;
   categories: Category[]; tasks: Task[]; habits: Habit[]; settings: Settings;
   addCategory: (c: Omit<Category, "id">) => void;
   updateCategory: (id: string, c: Partial<Category>) => void;
@@ -41,7 +50,8 @@ const defaultCategories: Category[] = [
   { id: "health", name: "Здоровье", color: "#f59e0b" },
   { id: "study", name: "Учёба", color: "#38bdf8" },
 ];
-const initial = {
+export const initial = {
+  schedules: [] as WorkSchedule[], activeScheduleId: null as string | null, gigs: [] as Gig[],
   categories: defaultCategories, tasks: [] as Task[], habits: [] as Habit[],
   settings: { theme: "dark", notifications: false, weekStartsMonday: true } as Settings,
 };
@@ -51,6 +61,17 @@ export const useStore = create<State>()(
   persist(
     (set) => ({
       ...initial,
+      saveSchedule: (schedule) => set((s) => ({ schedules: s.schedules.some((x) => x.id === schedule.id) ? s.schedules.map((x) => x.id === schedule.id ? schedule : x) : [...s.schedules, schedule], activeScheduleId: s.activeScheduleId ?? schedule.id })),
+      deleteSchedule: (id) => set((s) => ({ schedules: s.schedules.filter((x) => x.id !== id), activeScheduleId: s.activeScheduleId === id ? null : s.activeScheduleId })),
+      activateSchedule: (id) => set({ activeScheduleId: id }),
+      overrideShift: (id, date, shift) => set((s) => ({ schedules: s.schedules.map((x) => {
+        if (x.id !== id) return x;
+        const overrides = { ...x.overrides };
+        if (shift === undefined) delete overrides[date]; else overrides[date] = shift;
+        return { ...x, overrides };
+      }) })),
+      saveGig: (g) => set((s) => ({ gigs: s.gigs.some((x) => x.id === g.id) ? s.gigs.map((x) => x.id === g.id ? g : x) : [...s.gigs, g] })),
+      deleteGig: (id) => set((s) => ({ gigs: s.gigs.filter((x) => x.id !== id) })),
       addCategory: (c) => set((s) => ({ categories: [...s.categories, { ...c, id: uid() }] })),
       updateCategory: (id, c) => set((s) => ({ categories: s.categories.map((x) => (x.id === id ? { ...x, ...c } : x)) })),
       deleteCategory: (id) => set((s) => ({
@@ -80,3 +101,8 @@ export const useStore = create<State>()(
     { name: "moy-den", version: 1, storage: createJSONStorage(() => localStorage), skipHydration: true },
   ),
 );
+
+export function plannerData(s = useStore.getState()) {
+  return { categories: s.categories, tasks: s.tasks, habits: s.habits, settings: s.settings, schedules: s.schedules, activeScheduleId: s.activeScheduleId, gigs: s.gigs };
+}
+export type PlannerData = ReturnType<typeof plannerData>;

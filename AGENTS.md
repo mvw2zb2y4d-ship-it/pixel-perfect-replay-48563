@@ -9,5 +9,6 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- App data lives in one persisted zustand store (src/lib/store.ts, localStorage, skipHydration + rehydrate in __root) — keeps data local now and lets a cloud sync adapter replace storage later.
+- All planner data lives in one persisted Zustand store; cloud-sync switches per-account storage keys and syncs owner-scoped JSON snapshots with optimistic revisions — preserves existing local data without automatically importing it into new accounts.
 - Date/streak/overdue rules live in src/lib/logic.ts as pure functions — screens stay thin and rules stay testable.
+- Work schedules and gigs use browser-safe shared types; schedule overrides store shift snapshots per date — editing templates cannot change manual dates.

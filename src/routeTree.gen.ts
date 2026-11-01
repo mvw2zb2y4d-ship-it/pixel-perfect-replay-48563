@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GigsRouteImport } from './routes/gigs'
 import { Route as HabitsRouteImport } from './routes/habits'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TasksRouteImport } from './routes/tasks'
@@ -20,9 +22,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GigsRoute = GigsRouteImport.update({
+  id: '/gigs',
+  path: '/gigs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HabitsRoute = HabitsRouteImport.update({
   id: '/habits',
   path: '/habits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -43,14 +55,18 @@ const TasksRoute = TasksRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/gigs': typeof GigsRoute
   '/habits': typeof HabitsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/gigs': typeof GigsRoute
   '/habits': typeof HabitsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
@@ -58,22 +74,48 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/gigs': typeof GigsRoute
   '/habits': typeof HabitsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/habits' | '/settings' | '/stats' | '/tasks'
+  fullPaths:
+    | '/'
+    | '/gigs'
+    | '/habits'
+    | '/reset-password'
+    | '/settings'
+    | '/stats'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/habits' | '/settings' | '/stats' | '/tasks'
-  id: '__root__' | '/' | '/habits' | '/settings' | '/stats' | '/tasks'
+  to:
+    | '/'
+    | '/gigs'
+    | '/habits'
+    | '/reset-password'
+    | '/settings'
+    | '/stats'
+    | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/gigs'
+    | '/habits'
+    | '/reset-password'
+    | '/settings'
+    | '/stats'
+    | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GigsRoute: typeof GigsRoute
   HabitsRoute: typeof HabitsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
   TasksRoute: typeof TasksRoute
@@ -88,11 +130,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gigs': {
+      id: '/gigs'
+      path: '/gigs'
+      fullPath: '/gigs'
+      preLoaderRoute: typeof GigsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/habits': {
       id: '/habits'
       path: '/habits'
       fullPath: '/habits'
       preLoaderRoute: typeof HabitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -121,7 +177,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GigsRoute: GigsRoute,
   HabitsRoute: HabitsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,
   TasksRoute: TasksRoute,

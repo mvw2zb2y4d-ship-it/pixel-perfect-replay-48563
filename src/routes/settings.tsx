@@ -5,6 +5,8 @@ import { useStore, type Habit } from "@/lib/store";
 import { isStandalone, notifStatus, requestPermission, type NotifStatus } from "@/lib/notifications";
 import { Screen, Segmented } from "@/components/ui-kit";
 import { HabitSheet } from "@/components/HabitSheet";
+import { ScheduleSection } from "@/components/ScheduleSection";
+import { AccountSection } from "@/components/AccountSection";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -13,6 +15,7 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Категории, тема, уведомления и управление привычками." },
       { property: "og:title", content: "Настройки — Мой день" },
       { property: "og:description", content: "Категории, тема, уведомления и управление привычками." },
+      { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SettingsPage,
@@ -49,6 +52,8 @@ function SettingsPage() {
 
   return (
     <Screen title="Настройки">
+      <Section title="Мой рабочий график"><ScheduleSection /></Section>
+      <Section title="Аккаунт и сохранение"><AccountSection /></Section>
       <Section title="Категории">
         {s.categories.map((c) => (
           <div key={c.id} className="flex items-center gap-2">
@@ -95,7 +100,7 @@ function SettingsPage() {
         <div className="flex items-center justify-between">
           <span>Неделя начинается</span><span className="text-sm text-muted-foreground">с понедельника</span>
         </div>
-        <div className="text-xs text-muted-foreground">Данные хранятся на этом устройстве. Регистрация не требуется.</div>
+        <div className="text-xs text-muted-foreground">Без входа данные хранятся на устройстве; после входа — в личном аккаунте.</div>
         <button onClick={() => confirm("Удалить все задачи, привычки и настройки?") && s.resetAll()} className="w-full rounded-xl bg-elevated py-2.5 text-sm font-semibold text-destructive">Сбросить все данные</button>
       </Section>
       <HabitSheet open={edit.open} habit={edit.habit} onClose={() => setEdit({ open: false })} />
