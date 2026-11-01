@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { BarChart3, CalendarDays, CheckSquare, Settings, Sparkles } from "lucide-react";
+import { BarChart3, CalendarDays, CheckSquare, Settings, Sparkles, Wallet } from "lucide-react";
 
 const items = [
   { to: "/", label: "Календарь", icon: CalendarDays },
   { to: "/tasks", label: "Задачи", icon: CheckSquare },
   { to: "/habits", label: "Привычки", icon: Sparkles },
+  { to: "/gigs", label: "Халтуры", icon: Wallet },
   { to: "/stats", label: "Статистика", icon: BarChart3 },
   { to: "/settings", label: "Настройки", icon: Settings },
 ] as const;
@@ -15,7 +16,7 @@ export function BottomNav() {
       <div className="mx-auto flex max-w-md">
         {items.map(({ to, label, icon: Icon }) => (
           <Link key={to} to={to} activeOptions={{ exact: true }}
-            className="flex flex-1 flex-col items-center gap-1 pt-2 text-[11px] font-medium text-muted-foreground data-[status=active]:text-primary">
+            className="flex min-w-0 flex-1 flex-col items-center gap-1 pt-2 text-[9px] font-medium text-muted-foreground data-[status=active]:text-primary">
             <Icon size={22} />{label}
           </Link>
         ))}

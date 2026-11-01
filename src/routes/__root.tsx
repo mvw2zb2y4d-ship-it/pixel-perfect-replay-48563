@@ -9,6 +9,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useStore } from "../lib/store";
 import { registerSW, scheduleReminders } from "../lib/notifications";
 import { BottomNav } from "../components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
+import { openAccount, useSync } from "@/lib/cloud-sync";
 
 function NotFoundComponent() {
   return (
@@ -79,14 +81,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [ready, setReady] = useState(false);
+  const ready = useSync((s) => s.ready);
   const theme = useStore((s) => s.settings.theme);
   const habits = useStore((s) => s.habits);
   const notif = useStore((s) => s.settings.notifications);
 
   useEffect(() => {
-    Promise.resolve(useStore.persist.rehydrate()).then(() => setReady(true));
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        setTimeout(() => void openAccount(session?.user.id ?? null, session?.user.email ?? ""), 0);
+      }
+    });
     registerSW();
+    return () => listener.subscription.unsubscribe();
   }, []);
   useEffect(() => { document.documentElement.classList.toggle("light", theme === "light"); }, [theme]);
   useEffect(() => { if (ready) scheduleReminders(habits, notif); }, [ready, habits, notif]);

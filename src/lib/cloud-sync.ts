@@ -41,8 +41,11 @@ export async function openAccount(userId: string | null, email = "") {
   const epoch = ++generation;
   unsubscribe?.(); clearTimeout(retry); pending = null;
   useSync.setState({ userId, email, ready: false });
-  useStore.persist.setOptions({ name: userId ? `moy-den:${userId}` : "moy-den" });
+  const storageName = userId ? `moy-den:${userId}` : "moy-den";
+  const existing = localStorage.getItem(storageName);
+  useStore.persist.setOptions({ name: storageName });
   useStore.setState({ ...initial });
+  if (existing) localStorage.setItem(storageName, existing);
   await useStore.persist.rehydrate();
   if (epoch !== generation) return;
   if (userId) {
