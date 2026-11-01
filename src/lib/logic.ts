@@ -1,5 +1,6 @@
 import { addDays, format, getDay, parseISO, startOfWeek, differenceInCalendarDays, differenceInCalendarMonths } from "date-fns";
 import type { Habit, Task } from "./store";
+import type { WorkSchedule, ShiftType } from "./work-types";
 
 export const ymd = (d: Date) => format(d, "yyyy-MM-dd");
 export const todayStr = () => ymd(new Date());
@@ -91,3 +92,29 @@ export const totalCompletions = (h: Habit) => Object.keys(h.log).filter((d) => h
 export const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 export const PRIORITY_LABEL = { low: "Низкий", medium: "Средний", high: "Высокий" } as const;
 export const REPEAT_LABEL = { none: "Не повторять", daily: "Каждый день", weekly: "Каждую неделю", monthly: "Каждый месяц" } as const;
+
+export function workedHours(start: string, end: string): number {
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return 0;
+  const minutes = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3));
+  let diff = minutes(end) - minutes(start);
+  if (diff <= 0) diff += 1440;
+  return Math.round(diff / 60 * 100) / 100;
+}
+export function endDate(date: string, start: string, end: string): string {
+  return end <= start ? ymd(addDays(parseISO(date), 1)) : date;
+}
+export function shiftOn(schedule: WorkSchedule | undefined, date: string): ShiftType | null {
+  if (!schedule) return null;
+  if (Object.prototype.hasOwnProperty.call(schedule.overrides, date)) return schedule.overrides[date] ?? null;
+  if (schedule.mode === "manual" || date < schedule.startDate || !schedule.pattern.length) return null;
+  const index = schedule.mode === "weekly" ? dow(parseISO(date)) : differenceInCalendarDays(parseISO(date), parseISO(schedule.startDate)) % schedule.pattern.length;
+  const id = schedule.pattern[index];
+  return schedule.shifts.find((s) => s.id === id) ?? null;
+}
+export function scheduleTemplate(name: string, startDate: string): Omit<WorkSchedule, "id"> {
+  const regular: ShiftType = { id: "work", name: "Рабочая смена", kind: "day", start: "09:00", end: "18:00", off: false };
+  const off: ShiftType = { id: "off", name: "Выходной", kind: "regular", start: "", end: "", off: true };
+  const daily = name === "1/3" || name === "Сутки через трое";
+  if (daily) { regular.start = "08:00"; regular.end = "08:00"; }
+  return { name, mode: name === "5/2" ? "weekly" : "cycle", startDate, shifts: [regular, off], pattern: name === "5/2" ? ["work", "work", "work", "work", "work", "off", "off"] : name === "2/2" ? ["work", "work", "off", "off"] : daily ? ["work", "off", "off", "off"] : ["work", "off"], overrides: {} };
+}
