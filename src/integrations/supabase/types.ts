@@ -14,13 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      planner_states: {
+        Row: {
+          payload: Json
+          revision: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          payload?: Json
+          revision?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          payload?: Json
+          revision?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      save_planner_state: {
+        Args: { p_payload: Json; p_revision: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
