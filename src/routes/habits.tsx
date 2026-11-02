@@ -15,6 +15,7 @@ export const Route = createFileRoute("/habits")({
       { name: "description", content: "Обычные и количественные привычки, серии и история выполнения." },
       { property: "og:title", content: "Привычки — Мой день" },
       { property: "og:description", content: "Обычные и количественные привычки, серии и история выполнения." },
+      { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
     ],
   }),
   component: HabitsPage,

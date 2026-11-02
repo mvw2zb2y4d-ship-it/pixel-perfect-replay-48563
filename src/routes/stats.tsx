@@ -14,6 +14,7 @@ export const Route = createFileRoute("/stats")({
       { name: "description", content: "Статистика выполнения задач и соблюдения привычек." },
       { property: "og:title", content: "Статистика — Мой день" },
       { property: "og:description", content: "Статистика выполнения задач и соблюдения привычек." },
+      { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
     ],
   }),
   component: StatsPage,
