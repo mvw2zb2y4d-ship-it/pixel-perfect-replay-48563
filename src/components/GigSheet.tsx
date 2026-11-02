@@ -4,7 +4,7 @@ import { endDate, todayStr, workedHours } from "@/lib/logic";
 import { Label, PrimaryButton, Sheet } from "./ui-kit";
 import { Button } from "./ui/button";
 
-export function GigSheet({ open, onClose, gig, date }: { open: boolean; onClose: () => void; gig?: Gig | null; date?: string }) {
+export function GigSheet({ open, onClose, gig, date }: { open: boolean; onClose: () => void; gig?: Gig | null | undefined; date?: string | undefined }) {
   const [f, setF] = useState<Gig>({ id: "", date: todayStr(), start: "", end: "", hours: 0, manualHours: false, client: "", earnings: 0, comment: "" });
   useEffect(() => { if (open) setF(gig ?? { id: uid(), date: date ?? todayStr(), start: "", end: "", hours: 0, manualHours: false, client: "", earnings: 0, comment: "" }); }, [open, gig, date]);
   const hours = f.manualHours ? f.hours : workedHours(f.start, f.end);

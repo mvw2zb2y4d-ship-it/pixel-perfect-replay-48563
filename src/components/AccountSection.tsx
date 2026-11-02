@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { exportBackup, importLegacy, useSync } from "@/lib/cloud-sync";
+import { exportBackup, importLegacy, resolveConflict, useSync } from "@/lib/cloud-sync";
 import { Button } from "@/components/ui/button";
 import { Label } from "./ui-kit";
 import "@lovable.dev/cloud-auth-js/styles.css";
@@ -22,6 +22,7 @@ export function AccountSection() {
   return <div className="space-y-3">
     {sync.userId ? <>
       <p className="break-all text-sm">{sync.email}</p><p className="text-xs text-muted-foreground" role="status">{sync.status}</p>
+      {sync.status.startsWith("Конфликт") && <div className="space-y-2"><Button variant="secondary" className="h-auto w-full whitespace-normal" onClick={() => { if (confirm("Заменить данные на этом устройстве облачной версией? Сначала скачайте копию, если хотите сохранить местные изменения.")) void resolveConflict(false); }}>Загрузить версию из Cloud</Button><Button variant="outline" className="h-auto w-full whitespace-normal" onClick={() => { if (confirm("Заменить облачную версию данными с этого устройства? Изменения с другого устройства будут заменены.")) void resolveConflict(true); }}>Сохранить эту версию в Cloud</Button></div>}
       {sync.legacy && <Button className="h-auto w-full whitespace-normal" variant="secondary" onClick={() => confirm("Добавить старые записи с этого устройства в ваш аккаунт? Подтвердите, что они принадлежат вам.") && importLegacy()}>Перенести мои старые записи</Button>}
       <Button variant="outline" onClick={exportBackup}>Скачать копию данных</Button>
       <Button variant="ghost" onClick={async () => { if (sync.status !== "Сохранено в Cloud" && !confirm("Есть несохранённые в Cloud изменения. Они останутся на этом устройстве. Выйти?")) return; await supabase.auth.signOut(); }}>Выйти</Button>

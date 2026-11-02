@@ -9,19 +9,21 @@ let revision = 0;
 let unsubscribe: (() => void) | undefined;
 let pending: PlannerData | null = null;
 let saving = false;
+let blocked = false;
 let retry: ReturnType<typeof setTimeout> | undefined;
 
 async function flush(epoch: number) {
-  if (saving || !pending || epoch !== generation) return;
+  if (saving || blocked || !pending || epoch !== generation) return;
   saving = true;
   const data = pending; pending = null;
   useSync.setState({ status: "Сохраняется…" });
   const result = await supabase.rpc("save_planner_state", { p_payload: data as unknown as Json, p_revision: revision });
   saving = false;
-  if (epoch !== generation) return;
+  if (epoch !== generation) { if (pending) void flush(generation); return; }
   if (result.error) {
     pending = pending ?? data;
     if (result.error.message.includes("STATE_CONFLICT")) {
+      blocked = true;
       useSync.setState({ status: "Конфликт: есть изменения на другом устройстве. Скачайте копию перед перезагрузкой." });
       return;
     }
@@ -39,7 +41,7 @@ async function flush(epoch: number) {
 export async function openAccount(userId: string | null, email = "") {
   if (useSync.getState().ready && useSync.getState().userId === userId) return;
   const epoch = ++generation;
-  unsubscribe?.(); clearTimeout(retry); pending = null;
+  unsubscribe?.(); clearTimeout(retry); pending = null; blocked = false;
   useSync.setState({ userId, email, ready: false });
   const storageName = userId ? `moy-den:${userId}` : "moy-den";
   const existing = localStorage.getItem(storageName);
@@ -59,7 +61,7 @@ export async function openAccount(userId: string | null, email = "") {
     } else {
       revision = data?.revision ?? 0;
       if (!meta.dirty) useStore.setState({ ...initial, ...(data?.payload as Partial<PlannerData> ?? {}) });
-      else if (meta.revision !== revision) useSync.setState({ status: "Конфликт: скачайте копию перед перезагрузкой." });
+      else if (meta.revision !== revision) { blocked = true; revision = meta.revision; useSync.setState({ status: "Конфликт: скачайте копию перед перезагрузкой." }); }
       else pending = cache;
       if (!meta.dirty) useSync.setState({ status: "Сохранено в Cloud" });
     }
@@ -71,9 +73,27 @@ export async function openAccount(userId: string | null, email = "") {
       localStorage.setItem(`moy-den-meta:${userId}`, JSON.stringify({ revision, dirty: true }));
       void flush(epoch);
     });
+    if (error && meta.dirty) pending = cache;
     if (pending) void flush(epoch);
   } else useSync.setState({ status: "На устройстве", legacy: false });
   useSync.setState({ ready: true });
+}
+
+export async function resolveConflict(keepLocal: boolean) {
+  const userId = useSync.getState().userId;
+  if (!userId) return;
+  const epoch = generation;
+  const { data, error } = await supabase.from("planner_states").select("payload,revision").eq("user_id", userId).maybeSingle();
+  if (error || epoch !== generation) return;
+  revision = data?.revision ?? 0; blocked = false;
+  if (keepLocal) { pending = plannerData(); void flush(epoch); }
+  else {
+    pending = null; unsubscribe?.();
+    localStorage.setItem(`moy-den-meta:${userId}`, JSON.stringify({ revision, dirty: false }));
+    useStore.setState({ ...initial, ...(data?.payload as Partial<PlannerData> ?? {}) });
+    useSync.setState({ ready: false });
+    await openAccount(userId, useSync.getState().email);
+  }
 }
 
 export function importLegacy() {

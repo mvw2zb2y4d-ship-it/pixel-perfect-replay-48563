@@ -15,6 +15,7 @@ export const Route = createFileRoute("/tasks")({
       { name: "description", content: "Список задач с приоритетами, категориями и повторами." },
       { property: "og:title", content: "Задачи — Мой день" },
       { property: "og:description", content: "Список задач с приоритетами, категориями и повторами." },
+      { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
     ],
   }),
   component: TasksPage,
