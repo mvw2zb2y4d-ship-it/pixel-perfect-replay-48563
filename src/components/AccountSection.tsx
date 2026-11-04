@@ -25,7 +25,7 @@ export function AccountSection() {
       <p className="break-all text-sm">{sync.email}</p><p className="text-xs text-muted-foreground" role="status">{sync.status}</p>
       {sync.status.startsWith("Конфликт") && <div className="space-y-2"><Button variant="secondary" className="h-auto w-full whitespace-normal" onClick={() => { if (confirm("Заменить данные на этом устройстве облачной версией? Сначала скачайте копию, если хотите сохранить местные изменения.")) void resolveConflict(false); }}>Загрузить версию из Cloud</Button><Button variant="outline" className="h-auto w-full whitespace-normal" onClick={() => { if (confirm("Заменить облачную версию данными с этого устройства? Изменения с другого устройства будут заменены.")) void resolveConflict(true); }}>Сохранить эту версию в Cloud</Button></div>}
       {sync.legacy && <Button className="h-auto w-full whitespace-normal" variant="secondary" onClick={() => confirm("Добавить старые записи с этого устройства в ваш аккаунт? Подтвердите, что они принадлежат вам.") && importLegacy()}>Перенести мои старые записи</Button>}
-      <Button variant="outline" onClick={exportBackup}>Скачать копию данных</Button>
+      <Button variant="outline" onClick={() => exportBackup()}>Скачать копию данных</Button>
       <Button variant="ghost" onClick={async () => { if (sync.status !== "Сохранено в Cloud" && !confirm("Есть несохранённые в Cloud изменения. Они останутся на этом устройстве. Выйти?")) return; await supabase.auth.signOut(); }}>Выйти</Button>
     </> : <>
       <p className="text-xs text-muted-foreground">Без входа записи остаются на этом устройстве. Для личного сохранения в Cloud войдите в аккаунт.</p>
@@ -35,7 +35,7 @@ export function AccountSection() {
       <div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => setSignup(!signup)}>{signup ? "Уже есть аккаунт" : "Создать аккаунт"}</Button><Button variant="ghost" onClick={async () => { if (!email) { setMessage("Укажите почту."); return; } const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` }); setMessage(error ? "Не удалось отправить письмо." : "Ссылка для смены пароля отправлена."); }}>Забыли пароль?</Button></div>
       <Button variant="secondary" className="w-full" onClick={() => social("google")}>Продолжить с Google</Button>
       <Button className="lovable-auth-button w-full" onClick={() => social("lovable")}>Продолжить с Lovable</Button>
-      <Button variant="outline" onClick={exportBackup}>Скачать копию данных</Button>
+      <Button variant="outline" onClick={() => exportBackup()}>Скачать копию данных</Button>
     </>}
     <RestoreBackup />
     {message && <p className="text-sm text-warning" role="status">{message}</p>}
