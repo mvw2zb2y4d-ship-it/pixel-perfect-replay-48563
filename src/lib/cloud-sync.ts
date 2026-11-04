@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
 import { initial, plannerData, useStore, type PlannerData } from "./store";
 import type { Json } from "@/integrations/supabase/types";
+import { parseBackup, prepareRestore, restoreCounts, type RestoreMode } from "./backup";
 
 export const useSync = create<{ userId: string | null; email: string; status: string; ready: boolean; legacy: boolean }>(() => ({ userId: null, email: "", status: "На устройстве", ready: false, legacy: false }));
 let generation = 0;
@@ -11,9 +12,10 @@ let pending: PlannerData | null = null;
 let saving = false;
 let blocked = false;
 let retry: ReturnType<typeof setTimeout> | undefined;
+let restoring = false;
 
 async function flush(epoch: number) {
-  if (saving || blocked || !pending || epoch !== generation) return;
+  if (restoring || saving || blocked || !pending || epoch !== generation) return;
   saving = true;
   const data = pending; pending = null;
   useSync.setState({ status: "Сохраняется…" });
@@ -39,6 +41,8 @@ async function flush(epoch: number) {
 }
 
 export async function openAccount(userId: string | null, email = "") {
+  // Finish the owner-bound transaction before switching persistence keys.
+  while (restoring) await new Promise((resolve) => setTimeout(resolve, 25));
   if (useSync.getState().ready && useSync.getState().userId === userId) return;
   const epoch = ++generation;
   unsubscribe?.(); clearTimeout(retry); pending = null; blocked = false;
@@ -106,7 +110,94 @@ export function importLegacy() {
   useSync.setState({ legacy: false });
 }
 
-export function exportBackup() {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(plannerData(), null, 2)], { type: "application/json" }));
-  const a = document.createElement("a"); a.href = url; a.download = "moy-den-backup.json"; a.click(); URL.revokeObjectURL(url);
+export function exportBackup(data = plannerData(), filename = "moy-den-backup.json") {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadPreRestoreBackup() {
+  const key = `moy-den-before-restore:${useSync.getState().userId ?? "local"}`;
+  const raw = localStorage.getItem(key);
+  if (!raw) throw new Error("На этом устройстве нет копии перед восстановлением.");
+  exportBackup(parseBackup(raw), "moy-den-before-restore.json");
+}
+
+export async function restoreBackup(incoming: PlannerData, mode: RestoreMode, owner: string | null, expected: string) {
+  if (restoring || !useSync.getState().ready || owner !== useSync.getState().userId) throw new Error("Аккаунт изменился. Выберите файл заново.");
+  incoming = parseBackup(JSON.stringify(incoming));
+  if (mode !== "replace" && mode !== "merge") throw new Error("Неизвестный режим восстановления.");
+  if (saving || pending || blocked) throw new Error("Дождитесь сохранения в Cloud и разрешите конфликт перед восстановлением.");
+  const previous = structuredClone(plannerData());
+  if (JSON.stringify(previous) !== expected) throw new Error("Данные изменились. Выберите файл заново и проверьте результат.");
+  const next = prepareRestore(previous, incoming, mode);
+  const counts = restoreCounts(previous, incoming, mode);
+  const epoch = generation;
+  const storageKey = owner ? `moy-den:${owner}` : "moy-den";
+  const metaKey = owner ? `moy-den-meta:${owner}` : null;
+  const beforeRaw = localStorage.getItem(storageKey);
+  const beforeMeta = metaKey ? localStorage.getItem(metaKey) : null;
+  const oldRevision = revision;
+  let cloudRevision: number | null = null;
+  let token: string | null = null;
+  let staged = false;
+  const oldStatus = useSync.getState().status;
+  restoring = true;
+  try {
+    if (owner) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      token = sessionData.session?.access_token ?? null;
+      if (sessionError || !token || sessionData.session?.user.id !== owner) throw new Error("Аккаунт изменился. Восстановление отменено.");
+      const { data: userData, error } = await supabase.auth.getUser(token);
+      if (error || userData.user?.id !== owner) throw new Error("Не удалось подтвердить аккаунт. Данные не изменены.");
+    }
+    if (epoch !== generation || JSON.stringify(plannerData()) !== expected) throw new Error("Данные изменились. Восстановление отменено.");
+    // Durable safety copy first; a quota error must prevent any cloud write.
+    localStorage.setItem(`moy-den-before-restore:${owner ?? "local"}`, JSON.stringify(previous));
+    exportBackup(previous, "moy-den-before-restore.json");
+    localStorage.setItem(storageKey, JSON.stringify({ state: next, version: 1 }));
+    staged = true;
+    if (metaKey) localStorage.setItem(metaKey, JSON.stringify({ revision: oldRevision + 1, dirty: false }));
+    if (owner && token) {
+      useSync.setState({ status: "Восстанавливается…" });
+      const result = await supabase.rpc("save_planner_state", { p_payload: next as unknown as Json, p_revision: oldRevision }).setHeader("Authorization", `Bearer ${token}`);
+      if (result.error) throw new Error(result.error.message.includes("STATE_CONFLICT") ? "В Cloud появились новые изменения. Восстановление отменено; откройте аккаунт заново." : "Не удалось сохранить в Cloud. Прежние данные оставлены на устройстве.");
+      cloudRevision = result.data;
+      if (JSON.stringify(plannerData()) !== expected) throw new Error("Данные изменились во время восстановления.");
+      revision = cloudRevision;
+      if (metaKey) localStorage.setItem(metaKey, JSON.stringify({ revision, dirty: false }));
+    }
+    unsubscribe?.();
+    try { useStore.setState(next); }
+    finally {
+      if (owner) unsubscribe = useStore.subscribe(() => {
+        pending = plannerData();
+        localStorage.setItem(`moy-den-meta:${owner}`, JSON.stringify({ revision, dirty: true }));
+        void flush(epoch);
+      });
+    }
+    useSync.setState({ status: owner ? "Сохранено в Cloud" : "На устройстве" });
+    return counts;
+  } catch (error) {
+    // Compensate only a confirmed cloud commit, with the same owner token and CAS revision.
+    if (cloudRevision !== null && token) {
+      const rollback = await supabase.rpc("save_planner_state", { p_payload: previous as unknown as Json, p_revision: cloudRevision }).setHeader("Authorization", `Bearer ${token}`);
+      if (rollback.error) {
+        blocked = true;
+        useSync.setState({ status: "Конфликт: проверьте версию в Cloud. Копия до восстановления сохранена на устройстве." });
+      } else revision = rollback.data;
+    } else revision = oldRevision;
+    if (staged) {
+      if (beforeRaw === null) localStorage.removeItem(storageKey); else localStorage.setItem(storageKey, beforeRaw);
+      if (metaKey) {
+        if (cloudRevision !== null && !blocked) localStorage.setItem(metaKey, JSON.stringify({ revision, dirty: false }));
+        else if (beforeMeta === null) localStorage.removeItem(metaKey); else localStorage.setItem(metaKey, beforeMeta);
+      }
+    }
+    if (!blocked) useSync.setState({ status: oldStatus });
+    throw error instanceof Error ? error : new Error("Восстановление не выполнено. Прежние данные сохранены.");
+  } finally {
+    restoring = false;
+    if (pending && !blocked) void flush(epoch);
+  }
 }

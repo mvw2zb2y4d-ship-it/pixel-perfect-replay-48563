@@ -4,6 +4,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { exportBackup, importLegacy, resolveConflict, useSync } from "@/lib/cloud-sync";
 import { Button } from "@/components/ui/button";
 import { Label } from "./ui-kit";
+import { RestoreBackup } from "./RestoreBackup";
 import "@lovable.dev/cloud-auth-js/styles.css";
 
 export function AccountSection() {
@@ -36,6 +37,7 @@ export function AccountSection() {
       <Button className="lovable-auth-button w-full" onClick={() => social("lovable")}>Продолжить с Lovable</Button>
       <Button variant="outline" onClick={exportBackup}>Скачать копию данных</Button>
     </>}
+    <RestoreBackup />
     {message && <p className="text-sm text-warning" role="status">{message}</p>}
   </div>;
 }

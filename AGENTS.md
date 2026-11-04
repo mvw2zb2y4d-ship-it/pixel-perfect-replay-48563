@@ -12,3 +12,4 @@
 - All planner data lives in one persisted Zustand store; cloud-sync switches per-account storage keys and syncs owner-scoped JSON snapshots with optimistic revisions — preserves existing local data without automatically importing it into new accounts.
 - Date/streak/overdue rules live in src/lib/logic.ts as pure functions — screens stay thin and rules stay testable.
 - Work schedules and gigs use browser-safe shared types; schedule overrides store shift snapshots per date — editing templates cannot change manual dates.
+- Backup validation and merge planning live in browser-safe backup.ts; restore commits use the existing owner-token-bound revision RPC and a durable per-owner pre-restore copy, so imported files cannot select an account or partially mutate collections.
