@@ -161,7 +161,14 @@ export async function restoreBackup(incoming: PlannerData, mode: RestoreMode, ow
     if (owner && token) {
       useSync.setState({ status: "Восстанавливается…" });
       const result = await supabase.rpc("save_planner_state", { p_payload: next as unknown as Json, p_revision: oldRevision }).setHeader("Authorization", `Bearer ${token}`);
-      if (result.error) throw new Error(result.error.message.includes("STATE_CONFLICT") ? "В Cloud появились новые изменения. Восстановление отменено; откройте аккаунт заново." : "Не удалось сохранить в Cloud. Прежние данные оставлены на устройстве.");
+      if (result.error) {
+        // A lost response cannot prove the server did not commit. Block automatic writes until the owner reconciles.
+        if (!result.error.code || result.error.message.includes("STATE_CONFLICT")) {
+          blocked = true;
+          useSync.setState({ status: "Конфликт: результат сохранения в Cloud нужно проверить. Прежняя копия сохранена на устройстве." });
+        }
+        throw new Error(result.error.message.includes("STATE_CONFLICT") ? "В Cloud появились новые изменения. Восстановление отменено; проверьте облачную версию." : "Не удалось подтвердить сохранение в Cloud. Прежние данные оставлены на устройстве; проверьте облачную версию.");
+      }
       cloudRevision = result.data;
       if (JSON.stringify(plannerData()) !== expected) throw new Error("Данные изменились во время восстановления.");
       revision = cloudRevision;
@@ -169,6 +176,11 @@ export async function restoreBackup(incoming: PlannerData, mode: RestoreMode, ow
     }
     unsubscribe?.();
     try { useStore.setState(next); }
+    catch (error) {
+      // Zustand changes memory before its persistence adapter writes; restore memory even if that write fails.
+      try { useStore.setState(previous); } catch { /* Original storage values are restored by the outer handler. */ }
+      throw error;
+    }
     finally {
       if (owner) unsubscribe = useStore.subscribe(() => {
         pending = plannerData();

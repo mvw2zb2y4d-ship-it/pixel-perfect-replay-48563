@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "./ui-kit";
@@ -14,6 +14,8 @@ export function RestoreBackup() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [hasCopy, setHasCopy] = useState(false);
+  const ownerId = useSync((s) => s.userId);
+  useEffect(() => { setHasCopy(!!localStorage.getItem(`moy-den-before-restore:${ownerId ?? "local"}`)); }, [ownerId]);
   const counts = preview ? restoreCounts(preview.current, preview.data, mode) : [];
 
   async function choose(file: File | undefined) {
