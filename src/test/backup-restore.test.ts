@@ -71,6 +71,27 @@ describe("Owner-bound atomic restore", () => {
     await expect(restoreBackup(file, "replace", "account-a", JSON.stringify(previous))).rejects.toThrow();
     spy.mockRestore(); expect(plannerData()).toEqual(previous); expect(cloud.rpc).not.toHaveBeenCalled();
   });
+  it("rolls back a confirmed Cloud commit if the final local write fails", async () => {
+    const previous = plannerData(); const raw = localStorage.getItem("moy-den:account-a");
+    const originalSet = Storage.prototype.setItem;
+    let writes = 0;
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === "moy-den:account-a" && ++writes === 2) throw new Error("quota");
+      originalSet.call(this, key, value);
+    });
+    cloud.rpc.mockResolvedValueOnce({ data: 1, error: null }).mockResolvedValueOnce({ data: 2, error: null });
+    await expect(restoreBackup(file, "replace", "account-a", JSON.stringify(previous))).rejects.toThrow();
+    spy.mockRestore();
+    expect(plannerData()).toEqual(previous); expect(localStorage.getItem("moy-den:account-a")).toBe(raw);
+    expect(cloud.rpc).toHaveBeenNthCalledWith(2, "save_planner_state", { p_payload: previous, p_revision: 1 });
+  });
+  it("blocks automatic writes when a lost response makes Cloud outcome uncertain", async () => {
+    const previous = plannerData(); cloud.rpc.mockResolvedValue({ data: null, error: { message: "network lost" } });
+    await expect(restoreBackup(file, "replace", "account-a", JSON.stringify(previous))).rejects.toThrow();
+    useStore.getState().activateSchedule(null);
+    expect(cloud.rpc).toHaveBeenCalledTimes(1); expect(useSync.getState().status).toContain("Конфликт");
+    expect(plannerData()).toEqual(previous);
+  });
   it("rejects state changes since the preview", async () => {
     const expected = JSON.stringify(plannerData()); useStore.setState({ tasks: [task("edited")] });
     await expect(restoreBackup(file, "replace", "account-a", expected)).rejects.toThrow();
